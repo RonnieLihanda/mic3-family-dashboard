@@ -118,15 +118,26 @@ async function loadDataForCurrentDate() {
 async function saveData() {
     if (useSupabase) {
         // Cloud Save
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+            console.error("Save failed: No active session");
+            return;
+        }
+
         // We use an 'upsert' pattern.
-        const payload = { date_key: currentDateKey, data: db[currentDateKey] };
+        // Must include user_id to match the UNIQUE(user_id, date_key) constraint
+        const payload = {
+            date_key: currentDateKey,
+            data: db[currentDateKey],
+            user_id: session.user.id
+        };
 
         // Debug Log
         console.log("Attempting Cloud Save...", payload);
 
         const { data, error } = await supabaseClient
             .from('budget_logs')
-            .upsert(payload, { onConflict: 'date_key' })
+            .upsert(payload, { onConflict: 'user_id, date_key' })
             .select();
 
         if (error) {
