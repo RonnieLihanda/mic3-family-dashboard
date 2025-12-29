@@ -249,7 +249,13 @@
                 window.location.href = 'index.html';
 
             } catch (e) {
-                errMsg.innerText = e.message;
+                console.error("Auth Error:", e);
+                // detailed error message for "Failed to fetch"
+                let msg = e.message;
+                if (msg === "Failed to fetch") {
+                    msg += ". Please check: 1) Your Supabase URL is correct (starts with https://). 2) You are connected to the internet. 3) No firewall is blocking the connection.";
+                }
+                errMsg.innerText = "Error: " + msg;
                 errMsg.style.display = 'block';
             }
         });
