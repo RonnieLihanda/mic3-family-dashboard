@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Premium Family Budget Dashboard for tracking income and expenses.">
+    <title>Mic3 Family Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Phosphor Icons for nice UI icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <h2>Mic3 Family</h2>
+            </div>
+            <nav>
+                <ul>
+                    <li class="active"><a href="#" onclick="switchTab('dashboard')"><i class="ph ph-squares-four"></i>
+                            Dashboard</a></li>
+                    <li><a href="#" onclick="switchTab('income')"><i class="ph ph-money"></i> Income Manager</a></li>
+                    <li><a href="#" onclick="switchTab('expenses')"><i class="ph ph-wallet"></i> Expenses</a></li>
+                </ul>
+            </nav>
+            <div class="user-profile" onclick="openSettings()" style="cursor: pointer;">
+                <div class="avatar">M</div>
+                <div class="user-info">
+                    <p class="name">Mic3 Admin</p>
+                    <p class="role">Click for Settings</p>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header>
+                <h1 id="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <button class="btn-icon theme-toggle" id="theme-toggle" title="Toggle Theme">
+                        <i class="ph ph-sun"></i>
+                    </button>
+                    <div class="date-selector">
+                        <select id="month-select" class="premium-select"></select>
+                        <select id="year-select" class="premium-select"></select>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard / Summary View -->
+            <div id="view-dashboard" class="view-section">
+                <!-- Top Summary Cards (Projected vs Actual) -->
+                <section class="summary-cards-container">
+                    <div class="summary-card">
+                        <h3>Projected Balance</h3>
+                        <p class="amount" id="summary-proj-balance">Ksh 0.00</p>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Actual Balance</h3>
+                        <p class="amount" id="summary-actual-balance">Ksh 0.00</p>
+                    </div>
+                    <div class="summary-card difference-card">
+                        <h3>Difference</h3>
+                        <p class="amount" id="summary-diff">Ksh 0.00</p>
+                        <span class="status-icon" id="summary-diff-icon"></span>
+                    </div>
+                </section>
+
+                <div class="dashboard-grid">
+                    <!-- Income Snapshot -->
+                    <div class="card dashboard-table-card">
+                        <div class="card-header">
+                            <h3>Income Snapshot</h3>
+                        </div>
+                        <div class="mini-table-container">
+                            <table class="premium-table">
+                                <tr>
+                                    <td>Projected Income</td>
+                                    <td class="text-right" id="dash-proj-income">Ksh 0.00</td>
+                                </tr>
+                                <tr>
+                                    <td>Actual Income</td>
+                                    <td class="text-right" id="dash-actual-income">Ksh 0.00</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Expenses Snapshot -->
+                    <div class="card dashboard-table-card">
+                        <div class="card-header">
+                            <h3>Expense Snapshot</h3>
+                        </div>
+                        <div class="mini-table-container">
+                            <table class="premium-table">
+                                <tr>
+                                    <td>Projected Cost</td>
+                                    <td class="text-right" id="dash-proj-expense">Ksh 0.00</td>
+                                </tr>
+                                <tr>
+                                    <td>Actual Cost</td>
+                                    <td class="text-right" id="dash-actual-expense">Ksh 0.00</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card chart-section">
+                    <h3>Budget vs Actual</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Income View -->
+            <div id="view-income" class="view-section hidden">
+                <div class="split-container">
+                    <!-- Projected Income -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Projected Monthly Income</h3>
+                            <button class="btn-icon" onclick="openModal('income', 'projected')"><i
+                                    class="ph ph-plus"></i></button>
+                        </div>
+                        <table class="premium-table" id="table-income-projected">
+                            <thead>
+                                <tr>
+                                    <th>Source</th>
+                                    <th class="text-right">Amount</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                            <tfoot>
+                                <tr>
+                                    <th>Total</th>
+                                    <th class="text-right" id="total-income-projected">Ksh 0.00</th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Actual Income -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Actual Monthly Income</h3>
+                            <button class="btn-icon" onclick="openModal('income', 'actual')"><i
+                                    class="ph ph-plus"></i></button>
+                        </div>
+                        <table class="premium-table" id="table-income-actual">
+                            <thead>
+                                <tr>
+                                    <th>Source</th>
+                                    <th class="text-right">Amount</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                            <tfoot>
+                                <tr>
+                                    <th>Total</th>
+                                    <th class="text-right" id="total-income-actual">Ksh 0.00</th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expenses View -->
+            <div id="view-expenses" class="view-section hidden">
+                <div class="actions-bar">
+                    <button class="btn-primary" onclick="addCategory()">+ New Category</button>
+                </div>
+
+                <div id="expense-categories-container">
+                    <!-- Categories will be injected here (e.g. Housing) -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Agentic Chat Widget -->
+    <div id="agent-widget" class="agent-widget closed">
+        <div class="agent-header" onclick="toggleAgent()">
+            <div class="agent-title">
+                <i class="ph ph-robot"></i> Advisor
+            </div>
+            <i class="ph ph-caret-up" id="agent-toggle-icon"></i>
+        </div>
+        <div class="agent-body">
+            <div class="chat-messages" id="chat-messages">
+                <div class="message bot">
+                    Hello! I'm your Mic3 Financial Advisor. You can ask me to "show expenses", "add income", or "check
+                    balance".
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Ask me anything..." onkeypress="handleChatInput(event)">
+                <button class="btn-icon" onclick="sendChat()"><i class="ph ph-paper-plane-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Universal Modal -->
+    <div id="universal-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h2 id="modal-title">Add Item</h2>
+            <form id="universal-form">
+                <input type="hidden" id="form-type" value="">
+                <input type="hidden" id="form-subtype" value=""> <!-- e.g. projected/actual or categoryId -->
+
+                <div class="form-group">
+                    <label>Name / Source</label>
+                    <input type="text" id="form-name" required placeholder="e.g. Salary or Rent">
+                </div>
+
+                <div class="form-group">
+                    <label>Amount (Ksh)</label>
+                    <input type="number" id="form-amount" required placeholder="0.00">
+                </div>
+
+                <div class="form-group" id="form-group-category-select" style="display:none;">
+                    <label>Category</label>
+                    <select id="form-category-select"></select>
+                </div>
+
+                <div class="form-group" id="extra-fields-container"></div>
+
+                <button type="submit" class="btn-primary full-width">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeSettings()">&times;</span>
+            <h2>Settings</h2>
+            <p style="color:var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                Connect to Supabase for cloud storage. Leave blank to use local storage.
+            </p>
+            <div class="form-group">
+                <label>Supabase URL</label>
+                <input type="text" id="settings-url" placeholder="https://xyz.supabase.co">
+            </div>
+            <div class="form-group">
+                <label>Supabase Anon Key</label>
+                <input type="password" id="settings-key" placeholder="eyJxh...">
+            </div>
+            <button class="btn-primary full-width" onclick="saveSettings()">Save Configuration</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

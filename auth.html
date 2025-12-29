@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mic3 Family - Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: var(--bg-color);
+            min-height: 100vh;
+        }
+
+        .auth-container {
+            display: flex;
+            width: 900px;
+            height: 600px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+        }
+
+        .auth-left {
+            flex: 1;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .auth-right {
+            flex: 1;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+            color: white;
+            text-align: center;
+            position: relative;
+        }
+
+        .logo-text {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .auth-form .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .auth-form input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+        }
+
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .hero-desc {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .toggle-text {
+            margin-top: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .toggle-link {
+            color: var(--accent-color);
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .config-btn {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #error-msg {
+            color: #ef4444;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="auth-container">
+        <!-- Login / Signup Form -->
+        <div class="auth-left">
+            <h2 class="logo-text">Mic3 Family</h2>
+            <p class="subtitle" id="form-subtitle">Welcome back! Please login to your account.</p>
+
+            <form class="auth-form" id="auth-form">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="email" required placeholder="you@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-primary full-width" id="submit-btn" style="padding: 1rem;">Sign
+                    In</button>
+                <div id="error-msg"></div>
+            </form>
+
+            <p class="toggle-text">
+                <span id="toggle-p">Don't have an account?</span>
+                <span class="toggle-link" onclick="toggleMode()">Sign Up</span>
+            </p>
+        </div>
+
+        <!-- Decorative Right Side -->
+        <div class="auth-right">
+            <button class="config-btn" onclick="openConfig()" title="Configure Connection">
+                <i class="ph ph-gear"></i>
+            </button>
+            <h1 class="hero-title">Financial Freedom Starts Here.</h1>
+            <p class="hero-desc">Track, analyze, and optimize your family finances with the power of intelligent
+                budgeting.</p>
+        </div>
+    </div>
+
+    <!-- Hidden Config Modal Reuse -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content" style="background: #1e293b; color: white;">
+            <span class="close-modal" onclick="closeConfig()">&times;</span>
+            <h2>Configuration</h2>
+            <p style="margin-bottom: 1rem; opacity: 0.7;">Enter your Supabase URL & Key to connect.</p>
+            <div class="form-group">
+                <label>Supabase URL</label>
+                <input type="text" id="settings-url" class="full-width" style="padding: 8px; border-radius: 6px;">
+            </div>
+            <div class="form-group">
+                <label>Supabase Anon Key</label>
+                <input type="password" id="settings-key" class="full-width" style="padding: 8px; border-radius: 6px;">
+            </div>
+            <button class="btn-primary full-width" onclick="saveConfig()">Save</button>
+        </div>
+    </div>
+
+    <script>
+        let isLogin = true;
+        let supabaseClient = null;
+
+        // Init
+        const sbUrl = localStorage.getItem('sb_url');
+        const sbKey = localStorage.getItem('sb_key');
+
+        if (sbUrl && sbKey) {
+            // @ts-ignore
+            supabaseClient = supabase.createClient(sbUrl, sbKey);
+        } else {
+            // Force config open if no keys
+            setTimeout(openConfig, 500);
+        }
+
+        function toggleMode() {
+            isLogin = !isLogin;
+            const btn = document.getElementById('submit-btn');
+            const sub = document.getElementById('form-subtitle');
+            const togP = document.getElementById('toggle-p');
+            const togLink = document.querySelector('.toggle-link');
+
+            if (isLogin) {
+                btn.innerText = "Sign In";
+                sub.innerText = "Welcome back! Please login to your account.";
+                togP.innerText = "Don't have an account?";
+                togLink.innerText = "Sign Up";
+            } else {
+                btn.innerText = "Create Account";
+                sub.innerText = "Join the Mic3 Family Dashboard today.";
+                togP.innerText = "Already have an account?";
+                togLink.innerText = "Sign In";
+            }
+        }
+
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errMsg = document.getElementById('error-msg');
+            errMsg.style.display = 'none';
+
+            if (!supabaseClient) {
+                alert("Please configure Supabase connection first (Gear Icon).");
+                return;
+            }
+
+            try {
+                let error;
+                if (isLogin) {
+                    const res = await supabaseClient.auth.signInWithPassword({ email, password });
+                    error = res.error;
+                } else {
+                    const res = await supabaseClient.auth.signUp({
+                        email,
+                        password,
+                        options: { data: { full_name: email.split('@')[0] } }
+                    });
+                    error = res.error;
+                }
+
+                if (error) throw error;
+
+                // Success
+                window.location.href = 'index.html';
+
+            } catch (e) {
+                errMsg.innerText = e.message;
+                errMsg.style.display = 'block';
+            }
+        });
+
+        // Config Logic
+        function openConfig() {
+            document.getElementById('settings-url').value = localStorage.getItem('sb_url') || '';
+            document.getElementById('settings-key').value = localStorage.getItem('sb_key') || '';
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+        function closeConfig() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+        function saveConfig() {
+            const url = document.getElementById('settings-url').value;
+            const key = document.getElementById('settings-key').value;
+            if (url && key) {
+                localStorage.setItem('sb_url', url);
+                localStorage.setItem('sb_key', key);
+                // Re-init
+                // @ts-ignore
+                supabaseClient = supabase.createClient(url, key);
+                closeConfig();
+            }
+        }
+    </script>
+</body>
+
+</html>

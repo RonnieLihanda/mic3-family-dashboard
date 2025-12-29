@@ -1,0 +1,15 @@
+{
+  "name": "mic3-family-dashboard",
+  "version": "1.0.0",
+  "description": "Financial Dashboard for Mic3 Family",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=14.x"
+  }
+}
