@@ -55,15 +55,6 @@ async function initDataService() {
                 // Update Profile UI
                 document.querySelector('.user-info .name').innerText = session.user.user_metadata.full_name || session.user.email;
                 document.querySelector('.user-info .role').innerText = 'Admin (Connected)';
-
-                // Add Logout
-                const pf = document.querySelector('.user-profile');
-                pf.onclick = async () => {
-                    if (confirm("Logout?")) {
-                        await supabaseClient.auth.signOut();
-                        window.location.href = 'auth.html';
-                    }
-                };
             }
 
             console.log('Supabase Connected');
@@ -188,56 +179,144 @@ function sendChat() {
     }, 600);
 }
 
-function addMessage(text, sender) {
-    const c = document.getElementById('chat-messages');
-    const d = document.createElement('div');
-    d.className = `message ${sender}`;
-    d.innerText = text;
-    c.appendChild(d);
-    c.scrollTop = c.scrollHeight;
+// --- Gemini AI Integration ---
+async function callGeminiAPI(userQuery, fullDb, currentKey) {
+    const apiKey = localStorage.getItem('ai_key');
+    if (!apiKey) {
+        addMessage("⚠️ <b>AI Key Missing</b>: Please go to Settings (User Avatar) and enter your Gemini API Key to enable my smart brain.", 'bot');
+        return null; // Return null so we don't try strict fallback immediately if we want to warn user
+    }
+
+    const systemPrompt = `
+    You are "Mic3 Fintech", a world-class financial advisor with access to general market knowledge and the user's specific financial history.
+
+    CONTEXT:
+    - Current Month: ${currentKey}
+    - The Data below represents the user's entire financial history (Income & Expenses).
+    
+    USER DATA (JSON):
+    ${JSON.stringify(fullDb)}
+
+    YOUR CAPABILITIES:
+    1. **Deep Analysis**: Compare the "Current Month" (${currentKey}) against previous months. distinct trends.
+    2. **External Knowledge**: You possess general knowledge about inflation, investment vehicles (Stocks, ETFs, Bonds, Crypto), and economic principles. Use this to explain *why* a decision is good.
+    3. **"Internet-Like" Smarts**: If the user asks about general financial concepts (e.g. "What is the S&P 500?"), answer confidently using your internal knowledge base.
+    4. **Direct Dashboard Access**: The user believes you are "scraping" the dashboard. You ARE. The JSON data *is* the dashboard. Refer to specific "Projected" vs "Actual" numbers explicitly.
+
+    USER QUERY: "${userQuery}"
+    
+    INSTRUCTIONS:
+    - Answer directly and professionally.
+    - Use Markdown (bold key numbers, lists for advice).
+    - If the user asks something you can't calculate from the data (e.g. "Current Tesla stock price"), give general advice or explain you don't have a live ticker feed.
+    `;
+
+    try {
+        // Using gemini-1.5-flash-latest for better availability alias
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: systemPrompt }] }]
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error?.message || response.statusText);
+        }
+
+        const result = await response.json();
+        if (result.candidates && result.candidates[0].content) {
+            return result.candidates[0].content.parts[0].text;
+        }
+    } catch (e) {
+        console.error("AI Error", e);
+        addMessage(`❌ <b>Connection Error</b>: ${e.message}. <br>Please check your API Key in settings.`, 'bot');
+        return null;
+    }
+    return null;
 }
 
-function processAgentCommand(cmd) {
-    const data = getData();
-    let response = "I'm sorry, I didn't quite catch that.";
+async function processAgentCommand(cmd) {
+    const currentMonthData = getData();
 
-    // 1. Navigation
-    if (cmd.includes('expense') && cmd.includes('show')) {
+    // 0. Check for Navigation (Local & Fast)
+    if ((cmd.includes('expense') && cmd.includes('show')) || cmd.includes('go to expense')) {
         switchTab('expenses');
-        response = "I've opened the Expenses tab for you.";
+        addMessage("I've opened the Expenses tab for you.", 'bot');
+        return;
     }
-    else if (cmd.includes('income') && cmd.includes('show')) {
+    else if ((cmd.includes('income') && cmd.includes('show')) || cmd.includes('go to income')) {
         switchTab('income');
-        response = "Here is your Income Manager.";
+        addMessage("Here is your Income Manager.", 'bot');
+        return;
     }
     else if (cmd.includes('dashboard') || cmd.includes('home')) {
         switchTab('dashboard');
-        response = "Back to the Dashboard.";
+        addMessage("Back to the Dashboard.", 'bot');
+        return;
     }
 
-    // 2. Analysis & Advice
-    else if (cmd.includes('advice') || cmd.includes('analyze') || cmd.includes('how are we doing') || cmd.includes('invest')) {
-        response = generateFinancialAdvice(data);
+    // 1. Try Gemini AI First
+    const aiKey = localStorage.getItem('ai_key');
+
+    // Only use AI if key exists OR if user specifically asks a complex question. 
+    // If no key, we fall back to simple logic immediately effectively.
+    if (aiKey) {
+        const tempId = Date.now();
+        addMessage('<i class="ph ph-spinner ph-spin"></i> Mic3 Fintech is thinking...', 'bot', tempId);
+
+        // Pass GLOBAL db and currentDateKey
+        const aiResponse = await callGeminiAPI(cmd, db, currentDateKey);
+
+        const tempMsg = document.getElementById('msg-' + tempId);
+        if (tempMsg) tempMsg.remove();
+
+        if (aiResponse) {
+            let formatted = aiResponse.replace(/\n/g, '<br>');
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            addMessage(formatted, 'bot');
+            return;
+        }
     }
 
-    // 3. Data Queries
+    // 2. Fallback to Rule-Based Logic (Only if AI failed or no key)
+    let response = "I'm sorry, I cannot analyze that without my AI Brain enabled. Please check Settings.";
+
+    // Analysis & Advice
+    if (cmd.includes('advice') || cmd.includes('analyze') || cmd.includes('how are we doing') || cmd.includes('invest')) {
+        response = generateFinancialAdvice(currentMonthData);
+    }
+    // Data Queries
     else if (cmd.includes('balance')) {
-        const inc = data.income.actual.reduce((a, b) => a + b.amount, 0);
+        const inc = currentMonthData.income.actual.reduce((a, b) => a + b.amount, 0);
         let exp = 0;
-        data.expenses.forEach(c => c.items.forEach(i => exp += i.actual));
+        currentMonthData.expenses.forEach(c => c.items.forEach(i => exp += i.actual));
         const bal = inc - exp;
         response = `Your actual balance for this month is ${formatCurrency(bal)}.`;
     }
     else if (cmd.includes('total income')) {
-        const val = data.income.actual.reduce((a, b) => a + b.amount, 0);
+        const val = currentMonthData.income.actual.reduce((a, b) => a + b.amount, 0);
         response = `You have earned ${formatCurrency(val)} so far this month.`;
     }
 
     else if (cmd.includes('hello') || cmd.includes('hi')) {
-        response = "Hello! I am your Mic3 Financial Advisor. Ask me for 'advice' to analyze your budget health.";
+        response = "Hello! I am Mic3 Fintech. Connect my API Key in settings to unlock my full potential!";
     }
 
     addMessage(response, 'bot');
+}
+
+// Update addMessage to support ID for removal
+function addMessage(text, sender, id = null) {
+    const c = document.getElementById('chat-messages');
+    const d = document.createElement('div');
+    d.className = `message ${sender}`;
+    if (id) d.id = 'msg-' + id;
+    d.innerHTML = text;
+    c.appendChild(d);
+    c.scrollTop = c.scrollHeight;
 }
 
 function generateFinancialAdvice(data) {
@@ -469,6 +548,7 @@ function formatCurrency(val) {
 function openSettings() {
     document.getElementById('settings-url').value = localStorage.getItem('sb_url') || '';
     document.getElementById('settings-key').value = localStorage.getItem('sb_key') || '';
+    document.getElementById('settings-ai-key').value = localStorage.getItem('ai_key') || '';
     document.getElementById('settings-modal').classList.remove('hidden');
 }
 
@@ -479,11 +559,23 @@ function closeSettings() {
 async function saveSettings() {
     const url = document.getElementById('settings-url').value;
     const key = document.getElementById('settings-key').value;
+    const aiKey = document.getElementById('settings-ai-key').value;
+
     localStorage.setItem('sb_url', url);
     localStorage.setItem('sb_key', key);
+    localStorage.setItem('ai_key', aiKey);
+
     closeSettings();
     showToast('Settings Saved. Reloading...');
     setTimeout(() => location.reload(), 1000);
+}
+
+async function handleLogout() {
+    if (confirm("Are you sure you want to logout?")) {
+        if (supabaseClient) await supabaseClient.auth.signOut();
+        localStorage.clear(); // Clear keys to ensure clean state
+        window.location.href = 'auth.html';
+    }
 }
 
 function setupTheme() {

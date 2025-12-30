@@ -196,7 +196,7 @@
     <div id="agent-widget" class="agent-widget closed">
         <div class="agent-header" onclick="toggleAgent()">
             <div class="agent-title">
-                <i class="ph ph-robot"></i> Advisor
+                <i class="ph ph-robot"></i> Mic3 Fintech
             </div>
             <i class="ph ph-caret-up" id="agent-toggle-icon"></i>
         </div>
@@ -264,7 +264,21 @@
                 <label>Supabase Anon Key</label>
                 <input type="password" id="settings-key" placeholder="eyJxh...">
             </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
+
+            <div class="form-group">
+                <label>Gemini API Key (Optional)</label>
+                <input type="password" id="settings-ai-key" class="full-width" placeholder="For Smart Advisor">
+                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">
+                    Get one for free at <a href="https://aistudio.google.com/app/apikey" target="_blank"
+                        style="color: var(--accent-color);">Google AI Studio</a>
+                </small>
+            </div>
             <button class="btn-primary full-width" onclick="saveSettings()">Save Configuration</button>
+            <button class="btn-sm full-width"
+                style="margin-top:10px; border:1px solid var(--danger-color); color:var(--danger-color); padding:0.8rem;"
+                onclick="handleLogout()">Logout</button>
         </div>
     </div>
 

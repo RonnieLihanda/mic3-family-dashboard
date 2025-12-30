@@ -462,7 +462,8 @@ select {
     display: flex;
     flex-direction: column;
     background: var(--card-bg);
-    height: 100%;
+    overflow: hidden;
+    /* Ensure children stay inside */
 }
 
 .chat-messages {
