@@ -29,6 +29,24 @@ Railway is excellent for hosting this project. I have added `package.json` and `
     *   It will take 1-2 minutes. Once done, it will provide a default URL (e.g., `web-production-xxxx.up.railway.app`).
     *   Click it to verify your site is live!
 
+## Part 2.5: Deploy to Vercel (Recommended for Speed)
+Vercel is fantastic for static dashboards like this. It is often faster and free for this type of usage.
+
+1.  **Sign Up/Login**: Go to [vercel.com](https://vercel.com).
+2.  **Add New Project**:
+    *   Click **"Add New"** -> **"Project"**.
+    *   **Import** your GitHub repository (`mic3-family-dashboard`).
+3.  **Configure**:
+    *   Framework Preset: Select **"Other"** (or leave as is).
+    *   Root Directory: `./`.
+    *   Build Command: (Leave Empty).
+    *   Output Directory: (Leave Empty).
+4.  **Deploy**:
+    *   Click **"Deploy"**.
+    *   In 10 seconds, your site will be live!
+5.  **Custom Domain**:
+    *   Vercel handles domains very easily. Go to **Settings** -> **Domains** and add your Namecheap domain. It will give you simple `A` and `CNAME` records to add in Namecheap.
+
 ## Part 3: Custom Domain (Namecheap)
 To use a "cheap" domain (e.g., `mic3family.xyz` or similar) from Namecheap:
 
