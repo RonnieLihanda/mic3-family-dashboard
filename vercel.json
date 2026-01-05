@@ -1,15 +1,5 @@
 {
     "version": 2,
-    "rewrites": [
-        {
-            "source": "/",
-            "destination": "/index.html"
-        },
-        {
-            "source": "/auth",
-            "destination": "/auth.html"
-        }
-    ],
     "headers": [
         {
             "source": "/(.*)",

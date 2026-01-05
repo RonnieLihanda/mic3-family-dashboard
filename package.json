@@ -2,7 +2,6 @@
   "name": "mic3-family-dashboard",
   "version": "1.0.0",
   "description": "Financial Dashboard for Mic3 Family",
-  "main": "server.js",
   "scripts": {
     "dev": "node server.js",
     "start": "echo 'Deploying static site'"
