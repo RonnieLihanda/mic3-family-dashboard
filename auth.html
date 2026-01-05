@@ -141,6 +141,10 @@
                     <label>Password</label>
                     <input type="password" id="password" required placeholder="••••••••">
                 </div>
+                <div style="text-align: right; margin-bottom: 1rem;">
+                    <a href="#" style="color: var(--accent-color); font-size: 0.9rem; text-decoration: none;"
+                        onclick="openForgotMiddleware(event)">Forgot Password?</a>
+                </div>
                 <button type="submit" class="btn-primary full-width" id="submit-btn" style="padding: 1rem;">Sign
                     In</button>
                 <div id="error-msg"></div>
@@ -178,6 +182,37 @@
                 <input type="password" id="settings-key" class="full-width" style="padding: 8px; border-radius: 6px;">
             </div>
             <button class="btn-primary full-width" onclick="saveConfig()">Save</button>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgot-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal"
+                onclick="document.getElementById('forgot-modal').classList.add('hidden')">&times;</span>
+            <h2>Reset Password</h2>
+            <p style="margin-bottom: 1rem; color: var(--text-secondary);">Enter your email to receive a password reset
+                link.</p>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="forgot-email" class="full-width" placeholder="you@example.com">
+            </div>
+            <button class="btn-primary full-width" onclick="handleForgotPassword()">Send Reset Link</button>
+            <p id="forgot-msg" style="margin-top: 1rem; text-align: center; display: none;"></p>
+        </div>
+    </div>
+
+    <!-- Update Password Modal (For when user clicks the email link) -->
+    <div id="update-password-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Set New Password</h2>
+            <p style="margin-bottom: 1rem; color: var(--text-secondary);">Please enter your new password below.</p>
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="new-password" class="full-width" placeholder="••••••••">
+            </div>
+            <button class="btn-primary full-width" onclick="handleUpdatePassword()">Update Password</button>
+            <p id="update-msg" style="margin-top: 1rem; text-align: center; display: none;"></p>
         </div>
     </div>
 
@@ -279,6 +314,77 @@
                 // @ts-ignore
                 supabaseClient = supabase.createClient(url, key);
                 closeConfig();
+            }
+        }
+
+        // --- PASSWORD RESET LOGIC ---
+
+        function openForgotMiddleware(e) {
+            e.preventDefault();
+            document.getElementById('forgot-msg').style.display = 'none';
+            document.getElementById('forgot-email').value = document.getElementById('email').value || '';
+            document.getElementById('forgot-modal').classList.remove('hidden');
+        }
+
+        async function handleForgotPassword() {
+            const email = document.getElementById('forgot-email').value;
+            const msgEl = document.getElementById('forgot-msg');
+
+            if (!email) {
+                alert("Please enter your email.");
+                return;
+            }
+
+            msgEl.innerText = "Sending...";
+            msgEl.style.display = 'block';
+            msgEl.style.color = 'var(--text-secondary)';
+
+            const { data, error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.href, // Redirects back to this page
+            });
+
+            if (error) {
+                msgEl.innerText = "Error: " + error.message;
+                msgEl.style.color = 'var(--danger-color)';
+            } else {
+                msgEl.innerText = "Check your email for the reset link!";
+                msgEl.style.color = 'var(--success-color)';
+            }
+        }
+
+        // Check if we are in "Recovery Mode" (User clicked email link)
+        supabaseClient.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                // Show update password modal
+                document.getElementById('update-password-modal').classList.remove('hidden');
+            }
+        });
+
+        async function handleUpdatePassword() {
+            const newPassword = document.getElementById('new-password').value;
+            const msgEl = document.getElementById('update-msg');
+
+            if (!newPassword) {
+                alert("Please enter a new password.");
+                return;
+            }
+
+            msgEl.innerText = "Updating...";
+            msgEl.style.display = 'block';
+
+            const { data, error } = await supabaseClient.auth.updateUser({
+                password: newPassword
+            });
+
+            if (error) {
+                msgEl.innerText = "Error: " + error.message;
+                msgEl.style.color = 'var(--danger-color)';
+            } else {
+                msgEl.innerText = "Success! Logging you in...";
+                msgEl.style.color = 'var(--success-color)';
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
             }
         }
     </script>
