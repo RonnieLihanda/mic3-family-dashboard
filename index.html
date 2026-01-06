@@ -15,6 +15,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 </head>
 
 <body>
@@ -29,6 +30,8 @@
                             Dashboard</a></li>
                     <li><a href="#" onclick="switchTab('income')"><i class="ph ph-money"></i> Income Manager</a></li>
                     <li><a href="#" onclick="switchTab('expenses')"><i class="ph ph-wallet"></i> Expenses</a></li>
+                    <li><a href="#" onclick="switchTab('calendar')"><i class="ph ph-calendar-blank"></i> Calendar</a>
+                    </li>
                 </ul>
             </nav>
             <div class="user-profile" onclick="openSettings()" style="cursor: pointer;">
@@ -188,8 +191,16 @@
                     <!-- Categories will be injected here (e.g. Housing) -->
                 </div>
             </div>
+    </div>
 
-        </main>
+    <!-- Calendar View -->
+    <div id="view-calendar" class="view-section hidden">
+        <div class="card" style="height: 600px; padding: 1rem;">
+            <div id="calendar"></div>
+        </div>
+    </div>
+
+    </main>
     </div>
 
     <!-- Agentic Chat Widget -->

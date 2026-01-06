@@ -58,6 +58,10 @@ async function initDataService() {
             }
 
             console.log('Supabase Connected');
+
+            // RBAC: Fetch Role
+            await fetchUserRole(session.user.id);
+
             showToast('Connected to Cloud Storage');
         } catch (e) {
             console.error('Supabase Init Error', e);
@@ -728,6 +732,13 @@ function addCategory() {
 function switchTab(t) {
     document.querySelectorAll('.view-section').forEach(e => e.classList.add('hidden'));
     document.getElementById('view-' + t).classList.remove('hidden');
+
+    // Calendar specific render
+    if (t === 'calendar') {
+        setTimeout(() => {
+            if (calendarInstance) calendarInstance.render();
+        }, 100);
+    }
 }
 
 function showToast(m, t = 'success') {
@@ -779,3 +790,121 @@ function updateMainChart(actInc, actExp, projInc, projExp) {
 }
 
 init();
+
+// --- 5. Calendar Logic ---
+let calendarInstance = null;
+
+function initCalendar() {
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
+
+    calendarInstance = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        themeSystem: 'standard',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,listMonth'
+        },
+        height: '100%',
+        events: getCalendarEvents() // Initial Load
+    });
+
+    calendarInstance.render();
+}
+
+function getCalendarEvents() {
+    const data = getData();
+    const [year, month] = currentDateKey.split('-');
+    const events = [];
+
+    // Visualize Income (Green) - Defaulting to 1st of month for simplicity or just 'start'
+    data.income.actual.forEach((item, index) => {
+        // Spread them out slightly if needed, or just pile them
+        events.push({
+            title: `Income: ${item.name}`,
+            start: `${year}-${month}-${String((index % 28) + 1).padStart(2, '0')}`, // Mock distribution
+            color: '#10b981',
+            allDay: true
+        });
+    });
+
+    // Visualize Expenses (Red)
+    let expCount = 0;
+    data.expenses.forEach(cat => {
+        cat.items.forEach(item => {
+            if (item.actual > 0) {
+                events.push({
+                    title: `${item.name} (${formatCurrency(item.actual)})`,
+                    start: `${year}-${month}-${String((expCount % 28) + 1).padStart(2, '0')}`, // Mock distribution
+                    color: '#ef4444',
+                    allDay: true
+                });
+                expCount++;
+            }
+        });
+    });
+
+    return events;
+}
+
+// Hook into updateUI to refresh calendar events
+const originalUpdateUI = updateUI;
+updateUI = function () {
+    originalUpdateUI();
+    if (calendarInstance) {
+        calendarInstance.removeAllEvents();
+        calendarInstance.addEventSource(getCalendarEvents());
+    } else {
+        // First time init
+        initCalendar();
+    }
+}
+
+// --- 6. RBAC (Smart Admin) Logic ---
+let currentUserRole = 'member'; // Default to safe
+
+async function fetchUserRole(uid) {
+    if (!supabaseClient) return;
+
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('role')
+        .eq('id', uid)
+        .single();
+
+    if (data && data.role) {
+        currentUserRole = data.role;
+        applyPermissions();
+    }
+}
+
+function applyPermissions() {
+    const isAdmin = currentUserRole === 'admin';
+    const roleLabel = isAdmin ? 'Admin (Access All)' : 'Family Member';
+
+    // UI Feedback
+    const roleEl = document.querySelector('.user-info .role');
+    if (roleEl) roleEl.innerText = roleLabel;
+
+    // 1. Hide Income Manager (Tab)
+    const incTab = document.querySelector('a[onclick="switchTab(\'income\')"]').parentElement;
+    if (!isAdmin) {
+        incTab.style.display = 'none';
+    } else {
+        incTab.style.display = 'block';
+    }
+
+    // 2. Hide Settings (Profile Click)
+    const profileEl = document.querySelector('.user-profile');
+    if (!isAdmin) {
+        profileEl.onclick = null; // Disable click
+        profileEl.style.cursor = 'default';
+        profileEl.title = "Settings managed by Admin";
+    } else {
+        profileEl.onclick = openSettings;
+        profileEl.style.cursor = 'pointer';
+    }
+
+    console.log(`RBAC Applied: User is ${currentUserRole}`);
+}
